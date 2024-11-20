@@ -245,33 +245,53 @@ def generate_graph():
         return jsonify({'success': False, 'error': 'No prompt provided'})
 
     try:
-        # Use OpenAI GPT to generate graph data
-        graph_data = generate_graph_data_with_gpt(prompt)
+        print("\n=== Starting Graph Generation Process ===")
+        print(f"Original prompt: {prompt}")
         
-        # Query OpenAlex API using the original prompt
+        # Step 1: Query OpenAlex API first
+        print("\n=== Querying OpenAlex API ===")
         openalex_url = f'https://api.openalex.org/works?search={prompt}&per-page=5'
-        print(f"\nQuerying OpenAlex with original prompt: {prompt}")
+        print(f"OpenAlex URL: {openalex_url}")
         
         papers = []
+        research_context = []
         response = requests.get(openalex_url)
         if response.status_code == 200:
             papers_data = response.json()
-            papers = [
-                {
+            print(f"Found {len(papers_data.get('results', []))} papers")
+            
+            for paper in papers_data.get('results', []):
+                paper_info = {
                     'title': paper.get('title'),
                     'year': paper.get('publication_year'),
                     'doi': paper.get('doi'),
-                    'authors': [author.get('author', {}).get('display_name') for author in paper.get('authorships', [])[:3]]
+                    'authors': [author.get('author', {}).get('display_name') for author in paper.get('authorships', [])[:3]],
+                    'abstract': None
                 }
-                for paper in papers_data.get('results', [])
-            ]
-            
-            # Still keep console output for debugging
-            print("\nRelevant papers from OpenAlex:")
-            for paper in papers:
-                print(f"- {paper['title']} ({paper['year']})")
-                print(f"  DOI: {paper['doi']}")
-                print()
+                
+                # Try to fetch abstract if DOI is available
+                if paper.get('doi'):
+                    print(f"\nFetching abstract for DOI: {paper.get('doi')}")
+                    try:
+                        abstract_response = requests.get(f"https://api.openalex.org/works/doi:{paper.get('doi')}")
+                        if abstract_response.status_code == 200:
+                            abstract_data = abstract_response.json()
+                            paper_info['abstract'] = abstract_data.get('abstract')
+                            if paper_info['abstract']:
+                                print("Successfully retrieved abstract")
+                                research_context.append({
+                                    'title': paper_info['title'],
+                                    'abstract': paper_info['abstract']
+                                })
+                    except Exception as e:
+                        print(f"Error fetching abstract: {str(e)}")
+                
+                papers.append(paper_info)
+                print(f"Added paper: {paper_info['title']} ({paper_info['year']})")
+        
+        print("\n=== Generating Graph with GPT ===")
+        # Use OpenAI GPT to generate graph data with research context
+        graph_data = generate_graph_data_with_gpt(prompt, research_context)
         
         return jsonify({
             'success': True, 
@@ -279,24 +299,34 @@ def generate_graph():
             'papers': papers
         })
     except Exception as e:
+        print(f"\nError in graph generation: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
-def generate_graph_data_with_gpt(prompt):
+def generate_graph_data_with_gpt(prompt, research_context):
     client = OpenAI(
         api_key=os.environ.get('OPENAI_API_KEY'),
         organization=os.environ.get('OPENAI_ORGANIZATION_KEY')
     )
     
-    # Prepare the prompt for GPT with the provided preamble   
+    # Format research context for the prompt
+    context_text = "\nRelevant Research Context:\n"
+    for paper in research_context:
+        context_text += f"\nTitle: {paper['title']}\nAbstract: {paper['abstract']}\n"
+    
+    print("Preparing GPT prompt with research context")
+    
+    # Prepare the prompt for GPT with the provided preamble and research context
     gpt_prompt = f"""
     You are an AI assistant and expert scientist, tasked with creating a comprehensive and detailed Directed Acyclic Graph (DAG) that illustrates causal mechanisms based on established scientific evidence. Your goal is to analyze the given prompt and generate a structured representation of the specific causal links described in the scientific literature, including relevant context, confounders, mediators, moderators, and indirect pathways. Sometimes, the scientific literature may not provide sufficient information to fully understand the causal relationships, and in those cases make sure you note so as to provide adequate context for the analysis (further instructions in the guidelines below). Sometimes the requests will be facetious, you can accommodate them and treat them as if they were serious, just make sure you note in the annotations that you are doing so.
+
+    The following research context has been gathered from relevant academic papers. Please use this information to inform and enhance the graph generation, incorporating key findings and relationships from these papers into the graph structure. Include references to these papers in the node titles where appropriate:{context_text}
 
     Please follow these guidelines:
 
     1. **Identify Key Concepts, Contextual Factors, and Confounders:**
-       - Extract specific factors, processes, outcomes, and context factors mentioned or implied in the prompt.
+       - Extract specific factors, processes, outcomes, and context factors mentioned or implied in the prompt and research context.
        - Include potential **confounders**, **mediators**, **moderators**, and other variables that may influence the causal relationships.
-       - Use your domain knowledge to include relevant intermediate steps and contextual factors supported by scientific evidence.
+       - Use your domain knowledge and the provided research context to include relevant intermediate steps and contextual factors supported by scientific evidence.
        - Include as many factors as you can find that are supported by evidence.
 
     2. **Determine Causal Relationships:**
@@ -325,12 +355,12 @@ def generate_graph_data_with_gpt(prompt):
 
     6. **Cite Sources:**
        - When possible, reference scientific studies or reviews that support each causal link (use placeholder citations if necessary) in the 'title' field.
+       - Include references to the provided research context papers where relevant.
 
     7. **Expand DAG**
         - Once the DAG is complete, go through all the nodes and ask yourself the same questions about causation between them. For example, if a node represents age, you might want to include edges from age to health, age to income, and age to education if relevant.
         - Expand the DAG by adding more nodes and edges to capture the full range of causal relationships.
         - Always make sure this is done based on evidence and not based on assumptions.
-        
 
     8. **Output Format:**
        - Return the result as a JSON object with two keys: **'nodes'** and **'edges'**.
@@ -366,33 +396,37 @@ def generate_graph_data_with_gpt(prompt):
     }} 
 
 
-**Based on the following prompt, generate a detailed directed acyclic graph (DAG) structure accounting for all the instructions above:**
+**Based on the following prompt and research context, generate a detailed directed acyclic graph (DAG) structure accounting for all the instructions above:**
 
-Prompt: {prompt}
-"""
+Prompt: {prompt}"""
 
-    # Call GPT-3.5-turbo API
+    print("\nSending request to OpenAI")
     response = client.chat.completions.create(
-        model='gpt-3.5-turbo-0125',
-        messages=[
-            {'role': 'system', 'content': 'You are an AI assistant tasked with creating a Directed Acyclic Graph (DAG) based on causal relationships. Your response must be a valid JSON object with "nodes" and "edges" arrays.'},
-            {'role': 'user', 'content': gpt_prompt},
-            {'role': 'system', 'content': 'Remember to provide your response as a valid JSON object. Do not include any explanatory text before or after the JSON.'}
-        ],
-        max_tokens=2000,
-        n=1,
-        temperature=0.5,
+        model="gpt-4",
+        messages=[{"role": "user", "content": gpt_prompt}],
+        temperature=0.7,
     )
-
-    # Parse the GPT response
-    gpt_output = response.choices[0].message.content.strip()
+    print("Received response from OpenAI")
+    
     try:
-        # Try to parse the JSON response
-        graph_structure = json.loads(gpt_output)
-        return graph_structure
+        # Extract the JSON part from the response
+        response_text = response.choices[0].message.content.strip()
+        # Find the first { and last } to extract the JSON object
+        start_idx = response_text.find('{')
+        end_idx = response_text.rfind('}') + 1
+        json_str = response_text[start_idx:end_idx]
+        
+        # Parse the JSON response
+        graph_data = json.loads(json_str)
+        print(f"\nSuccessfully parsed graph data with {len(graph_data.get('nodes', []))} nodes and {len(graph_data.get('edges', []))} edges")
+        return graph_data
     except json.JSONDecodeError as e:
-        # If JSON parsing fails, return a more informative error
-        raise Exception(f"Failed to parse GPT response as JSON. Error: {str(e)}. Response: {gpt_output[:200]}...")
+        print(f"\nError parsing JSON response: {str(e)}")
+        print(f"Response text: {response_text}")
+        raise Exception("Failed to parse GPT response into valid JSON")
+    except Exception as e:
+        print(f"\nUnexpected error processing GPT response: {str(e)}")
+        raise
 
 if __name__ == '__main__':
     with app.app_context():
