@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Admin Dashboard</h1>
+    
+    <h2>Users</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Admin</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{% if user.is_admin %}Yes{% else %}No{% endif %}</td>
+                    <td>
+                        <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                            <button type="submit">Delete</button>
+                        </form>
+                        {% if not user.is_admin %}
+                            <form action="{{ url_for('make_user_admin', user_id=user.id) }}" method="POST">
+                                <button type="submit">Make Admin</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Projects</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>User</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+                <tr>
+                    <td>{{ project.id }}</td>
+                    <td>{{ project.name }}</td>
+                    <td>{{ project.author.username }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_project', project_id=project.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this project?');">
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Export All Projects</h2>
+    <a href="{{ url_for('export_all_projects') }}" class="button">
+        <button type="button">Export All Projects as JSON</button>
+    </a>
+
+    <h2>Import Projects</h2>
+    <form action="{{ url_for('import_projects') }}" method="POST" enctype="multipart/form-data">
+        <input type="file" name="json_file" accept=".json" required>
+        <button type="submit">Import Projects</button>
+    </form>
+    <p>Note: You can import a single project or multiple projects. The file should be in JSON format.</p>
+
+{% endblock %}

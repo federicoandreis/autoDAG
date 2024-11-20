@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>DAG Drawing App</h1>
+    <div class="app-container">
+        <div class="main-content">
+            <div id="graph"></div>
+            <div class="controls">
+                <input type="text" id="project-name" placeholder="Project Name">
+                <button id="save-project">Save Project</button>
+                <button id="instructions">Instructions</button>
+                <input type="text" id="node-label" placeholder="Node Label">
+                <button id="add-node">Add Node</button>
+                <button id="add-edge">Add Edge</button>
+                <button id="remove-selected">Remove Selected</button>
+                <button id="clear-all">Clear All</button>
+                <button id="export-graph">Export Graph</button>
+                <input type="file" id="import-graph" accept=".json">
+                <button id="import-graph-btn">Import Graph</button>
+                
+                {% if current_user.is_admin %}
+                <div id="admin-input" class="admin-controls">
+                    <textarea id="admin-prompt" rows="4" cols="50" placeholder="Enter causal link prompt"></textarea>
+                    <button id="submit-prompt">Generate Graph</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="side-panel">
+            <h3>Suggested Nodes</h3>
+            <div id="suggested-nodes-list">
+                <!-- Suggested nodes will be dynamically added here -->
+            </div>
+            <h3>Your Projects</h3>
+            <div id="projects-list">
+                <!-- Projects will be dynamically added here -->
+            </div>
+            <h3>Related Papers</h3>
+            <div id="related-papers" class="scrollable-panel">
+                <!-- Papers will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Instructions Modal -->
+    <div id="instructions-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Instructions</h2>
+            <ul>
+                <li>To add a node: Enter a label and click "Add Node" or use a suggested node.</li>
+                <li>To add an edge: Click "Add Edge", then click on the source node and drag to the target node.</li>
+                <li>To remove elements: Select nodes/edges and click "Remove Selected".</li>
+                <li>To save your project: Enter a project name and click "Save Project".</li>
+                <li>To load a project: Click on a project name in the "Your Projects" list.</li>
+                <li>To export your graph: Click "Export Graph" to download a JSON file.</li>
+                <li>To import a graph: Click "Choose File", select a JSON file, then click "Import Graph".</li>
+                <li>To add annotations: Right-click on a node and enter the annotation text.</li>
+                {% if current_user.is_admin %}
+                <li>Assisted DAG creation: Enter a causal link prompt and click "Generate Graph" to generate an annotated graph (currently uses gpt-3.5-turbo-0125).</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}

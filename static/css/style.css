@@ -1,0 +1,275 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+nav {
+    background-color: #333;
+    color: white;
+    padding: 10px;
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin-right: 10px;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+}
+
+.app-container {
+    display: flex;
+    height: calc(100vh - 100px);
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-right: 20px;
+}
+
+#graph {
+    flex: 1;
+    border: 1px solid #ddd;
+    min-height: 400px;
+}
+
+.controls {
+    padding: 10px;
+    background-color: #f0f0f0;
+}
+
+.side-panel {
+    width: 250px;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border-left: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+#suggested-nodes-list, #projects-list {
+    height: 250px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding-top: 10px;
+}
+
+#related-papers {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.side-panel h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+#projects-list button,
+#suggested-nodes-list button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    font-size: 16px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    width: 100%;
+    border-radius: 4px;
+}
+
+#projects-list button:hover,
+#suggested-nodes-list button:hover {
+    background-color: #45a049;
+}
+
+.paper-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.paper-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.paper-authors {
+    font-style: italic;
+    color: #666;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+.paper-year {
+    color: #888;
+    font-size: 0.9em;
+}
+
+.paper-doi {
+    color: #0066cc;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+
+.paper-doi:hover {
+    text-decoration: underline;
+}
+
+.controls input[type="text"],
+.controls button,
+.controls input[type="file"] + label {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.controls input[type="file"] {
+    display: none;
+}
+
+.controls input[type="file"] + label {
+    background-color: #f0f0f0;
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.controls input[type="file"] + label:hover {
+    background-color: #e0e0e0;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+#instructions {
+    background-color: #008CBA;
+    color: white;
+}
+
+#instructions:hover {
+    background-color: #007B9A;
+}
+
+/* Admin dashboard styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.flashes {
+    list-style-type: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.flashes li {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+}

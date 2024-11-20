@@ -1,0 +1,77 @@
+# DAG Drawing App
+This is a Directed Acyclic Graph (DAG) Drawing Application that allows users to create, edit, and visualize complex causal relationships. It's built with Flask, SQLAlchemy, and Vis.js, providing a user-friendly interface for creating and managing DAG projects.
+
+## Features
+- Create and edit nodes and edges in a graph
+- Save and load projects
+- Export and import graphs as JSON
+- Suggested nodes for quick addition
+- Admin panel for user and project management
+- AI-assisted graph generation (for admin users)
+- User authentication and authorization
+- Responsive design for various screen sizes
+
+## Prerequisites
+Before you begin, ensure you have met the following requirements:
+- Python 3.7+
+- pip (Python package manager)
+- A modern web browser
+
+## Installation
+1. Clone the repository:
+git clone https://github.com/federicoandreis/CollaborativeDAG
+cd CollaborativeDAG
+
+2. Create a virtual environment:
+python -m venv venv
+source venv/bin/activate # On Windows, use venv\Scripts\activate
+
+3. Install the required packages:
+pip install -r requirements.txt
+
+4. Set up environment variables:
+Create a `.env` file in the root directory and add the following:
+SECRET_KEY=your_secret_key_here
+DATABASE_URL=sqlite:///your_database.db
+OPENAI_API_KEY=your_openai_api_key_here
+
+Replace `your_secret_key_here` with a secure random string, and `your_openai_api_key_here` with your actual OpenAI API key if you want to use the AI-assisted graph generation feature.
+
+5. Initialize the database:
+flask db upgrade
+
+## Running the Application
+1. Start the Flask development server:
+flask run
+
+2. Open a web browser and navigate to `http://localhost:5000`
+3. Register a new account or log in with existing credentials
+
+## Usage
+1. **Creating a Graph**: 
+- Use the "Add Node" button to create new nodes
+- Use the "Add Edge" button to create connections between nodes
+- Right-click on nodes to add annotations
+2. **Saving and Loading Projects**:
+- Enter a project name and click "Save Project" to save your work
+- Click on a project name in the "Your Projects" list to load it
+3. **Exporting and Importing Graphs**:
+- Use the "Export Graph" button to download your graph as a JSON file
+- Use the "Import Graph" button to load a previously exported graph
+4. **AI-Assisted Graph Generation** (Admin only):
+- Enter a causal link prompt in the admin input area
+- Click "Generate Graph" to create an AI-generated annotated graph
+
+## Admin Features
+To access admin features:
+1. Register a new account
+2. Use a database management tool to set the `is_admin` field to `True` for your user in the database
+3. Log in with your admin account to access additional features like user management and AI-assisted graph generation
+
+## Contributing
+Contributions to the DAG Drawing App are welcome. Please feel free to submit a Pull Request.
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This README provides a comprehensive overview of your DAG Drawing App, including installation instructions, usage guidelines, and information about special features. You can add this to your GitHub repository by creating a new file named 
+ in the root directory of your project and pasting this content into it.

@@ -1,0 +1,10 @@
+{
+    "nodes": [
+        {"label": "Start", "annotation": "Beginning of the process"},
+        {"label": "Decision", "annotation": "A decision point in the process"},
+        {"label": "Process", "annotation": "A process or action"},
+        {"label": "End", "annotation": "End of the process"},
+        {"label": "Input", "annotation": "Data input"},
+        {"label": "Output", "annotation": "Data output"}
+    ]
+}

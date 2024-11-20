@@ -1,0 +1,395 @@
+Quickstart tutorial
+Query the OpenAlex dataset using the magic of The Internet
+
+Lets use the OpenAlex API to get journal articles and books published by authors at Stanford University. We'll limit our search to articles published between 2010 and 2020. Since OpenAlex is free and openly available, these examples work without any login or account creation. 
+
+If you open these examples in a web browser, they will look much better if you have a browser plug-in such as JSONVue installed.
+
+1. Find the institution
+You can use the institutions endpoint to learn about universities and research centers. OpenAlex has a powerful search feature that searches across 108,000 institutions.
+
+Lets use it to search for Stanford University:
+
+Find Stanford University
+https://api.openalex.org/institutions?search=stanford
+
+Our first result looks correct (yeah!):
+
+Copy
+{
+  "id": "https://openalex.org/I97018004",
+  "ror": "https://ror.org/00f54p054",
+  "display_name": "Stanford University",
+  "country_code": "US",
+  "type": "education",
+  "homepage_url": "http://www.stanford.edu/"
+  // other fields removed
+}
+We can use the ID https://openalex.org/I97018004 in that result to find out more.
+
+2. Find articles (works) associated with Stanford University
+The works endpoint contains over 240 million articles, books, and theses . We can filter to show works associated with Stanford.
+
+Show works where at least one author is associated with Stanford University
+https://api.openalex.org/works?filter=institutions.id:https://openalex.org/I97018004
+
+This is just one of the 50+ ways that you can filter works!
+
+3. Filter works by publication year
+Right now the list shows records for all years. Lets narrow it down to works that were published between 2010 to 2020, and sort from newest to oldest.
+
+Show works with publication years 2010 to 2020, associated with Stanford University
+https://api.openalex.org/works?filter=institutions.id:https://openalex.org/I97018004,publication_year:2010-2020&sort=publication_date:desc
+
+4. Group works by publication year to show counts by year
+Finally, you can group our result by publication year to get our final result, which is the number of articles produced by Stanford, by year from 2010 to 2020. There are more than 30 ways to group records in OpenAlex, including by publisher, journal, and open access status.
+
+Group records by publication year
+https://api.openalex.org/works?filter=institutions.id:https://openalex.org/I97018004,publication_year:2010-2020&group-by=publication_year
+
+That gives a result like this:
+
+Copy
+[
+  {
+    "key": "2020",
+    "key_display_name": "2020",
+    "count": 18627
+  },
+  {
+    "key": "2019",
+    "key_display_name": "2019",
+    "count": 15933
+  },
+  {
+    "key": "2017",
+    "key_display_name": "2017",
+    "count": 14789
+  },
+  ...
+]
+There you have it! This same technique can be applied to hundreds of questions around scholarly data. The data you received is under a CC0 license, so not only did you access it easily, you can share it freely! 
+
+Works
+Journal articles, books, datasets, and theses
+
+Works are scholarly documents like journal articles, books, datasets, and theses. OpenAlex indexes over 240M works, with about 50,000 added daily. You can access a work in the OpenAlex API like this:
+
+Get a list of OpenAlex works:
+https://api.openalex.org/works
+
+That will return a list of Work object, describing everything OpenAlex knows about each work. We collect new works from many sources, including Crossref, PubMed, institutional and discipline-specific repositories (eg, arXiv). Many older works come from the now-defunct Microsoft Academic Graph (MAG).
+
+Works are linked to other works via the referenced_works (outgoing citations), cited_by_api_url (incoming citations), and related_works properties.
+
+
+Authors
+People who create works
+
+Authors are people who create works. You can get an author from the API like this:
+
+Get a list of OpenAlex authors:
+https://api.openalex.org/authors
+
+The Canonical External ID for authors is ORCID; only a small percentage of authors have one, but the percentage is higher for more recent works.
+
+Our information about authors comes from MAG, Crossref, PubMed, ORCID, and publisher websites, among other sources. To learn more about how we combine this information to get OpenAlex Authors, see Author disambiguation
+
+Authors are linked to works via the works.authorships property.
+
+Sources
+Journals and repositories that host works
+
+Sources are where works are hosted. OpenAlex indexes about 249,000 sources. There are several types, including journals, conferences, preprint repositories, and institutional repositories.
+
+Get a list of OpenAlex sources:
+https://api.openalex.org/sources
+
+The Canonical External ID for sources is ISSN-L, which is a special "main" ISSN assigned to every sources (sources tend to have multiple ISSNs). About 90% of sources in OpenAlex have an ISSN-L or ISSN.
+
+Our information about sources comes from Crossref, the ISSN Network, and MAG. These datasets are joined automatically where possible, but there’s also a lot of manual combining involved. We do not curate journals, so any journal that is available in the data sources should make its way into OpenAlex.
+
+Several sources may host the same work. OpenAlex reports both the primary host source (generally wherever the version of record lives), and alternate host sources (like preprint repositories).
+
+Sources are linked to works via the works.primary_location and works.locations properties.
+
+Institutions
+Universities and other organizations to which authors claim affiliations
+
+Institutions are universities and other organizations to which authors claim affiliations. OpenAlex indexes about 109,000 institutions.
+
+Get a list of OpenAlex institutions:
+https://api.openalex.org/institutions
+
+The Canonical External ID for institutions is the ROR ID. All institutions in OpenAlex have ROR IDs.
+
+Our information about institutions comes from metadata found in Crossref, PubMed, ROR, MAG, and publisher websites. In order to link institutions to works, we parse every affiliation listed by every author. These affiliation strings can be quite messy, so we’ve trained an algorithm to interpret them and extract the actual institutions with reasonably high reliability.
+
+For a simple example: we will treat both “MIT, Boston, USA” and “Massachusetts Institute of Technology” as the same institution (https://ror.org/042nb2s44).
+
+Institutions are linked to works via the works.authorships property.
+
+Topics
+Topics assigned to works
+
+Works in OpenAlex are tagged with Topics using an automated system that takes into account the available information about the work, including title, abstract, source (journal) name, and citations. There are around 4,500 Topics. Works are assigned topics using a model that assigns scores for each topic for a work. The highest-scoring topic is that work's primary_topic. We also provide additional highly ranked topics for works, in Work.topics.
+
+To learn more about how OpenAlex topics work in general, see the Topics page at OpenAlex help pages.
+
+For a detailed description of the methods behind OpenAlex Topics, see our paper: "OpenAlex: End-to-End Process for Topic Classification". The code and model are available at https://github.com/ourresearch/openalex-topic-classification.
+
+Publishers
+Companies and organizations that distribute works
+
+Publishers are companies and organizations that distribute journal articles, books, and theses. OpenAlex indexes about 10,000 publishers.
+
+Get a list of OpenAlex publishers:
+https://api.openalex.org/publishers
+
+Our publisher data is closely tied to the publisher information in Wikidata. So the Canonical External ID for OpenAlex publishers is a Wikidata ID, and almost every publisher has one. Publishers are linked to sources through the host_organization field.
+
+Funders
+Organizations that fund research
+
+Funders are organizations that fund research. OpenAlex indexes about 32,000 funders. Funder data comes from Crossref, and is enhanced with data from Wikidata and ROR.
+
+Get a list of OpenAlex funders:
+https://api.openalex.org/funders
+
+Funders are connected to works through grants.
+
+
+
+How to use the API
+
+API Overview
+The API is the primary way to get OpenAlex data. It's free and requires no authentication. The daily limit for API calls is 100,000 requests per user per day. For best performance, add your email to all API requests, like mailto=example@domain.com.
+
+Learn more about the API
+Get single entities
+
+Get lists of entities — Learn how to use paging, filtering, and sorting
+
+Get groups of entities — Group and count entities in different ways
+
+Rate limits and authentication — Learn about joining the polite pool
+
+Tutorials — Hands-on examples with code
+
+Client Libraries
+There are several third-party libraries you can use to get data from OpenAlex:
+
+openalexR (R)
+
+KtAlex (Kotlin)
+
+PyAlex (Python)
+
+diophila (Python)
+
+OpenAlexAPI (Python) pip install openalexapi
+
+OpenAlex API Instructions
+
+Base URL: https://api.openalex.org
+
+1. Search Works (Papers)
+   Endpoint: /works
+   Example: https://api.openalex.org/works?search=quantum+computing
+   
+   Key Parameters:
+   - search: Search terms
+   - filter: Filter results (e.g., publication_year, is_open_access)
+   - select: Choose specific fields to return
+   - per_page: Results per page (max 200)
+   - cursor: For pagination
+
+2. Get Related Works
+   Endpoint: /works/{work_id}/related_works
+   Example: https://api.openalex.org/works/W2741809807/related_works
+
+3. Get Citing Works
+   Endpoint: /works/{work_id}/citing_works
+   Example: https://api.openalex.org/works/W2741809807/citing_works
+
+4. Get Referenced Works
+   These are in the referenced_works field of a work
+
+Important Fields:
+- title
+- abstract
+- doi
+- publication_year
+- cited_by_count
+- related_works
+- referenced_works
+- concepts (subject areas/keywords)
+- open_access.is_oa (boolean for open access)
+
+Rate Limits:
+- Anonymous: 100 requests per minute
+- With email: 500 requests per minute (add ?mailto=your@email.com)
+
+Get single entities
+Get a single entity, based on an ID
+
+This is a more detailed guide to single entities in OpenAlex. If you're just getting started, check out get a single work.
+
+It's easy to get a singleton entity object from from the API:/<entity_name>/<entity_id>. Here's an example:
+
+Get the work with the OpenAlex ID W2741809807: https://api.openalex.org/works/W2741809807
+
+That will return a Work object, describing everything OpenAlex knows about the work with that ID. You can use IDs other than OpenAlex IDs, and you can also format the IDs in different ways. Read below to learn more.
+
+You can make up to 50 of these queries at once by requesting a list of entities and filtering on IDs using OR syntax.
+
+To get a single entity, you need a single unambiguous identifier, like an ORCID or an OpenAlex ID. If you've got an ambiguous identifier (like an author's name), you'll want to search instead.
+
+The OpenAlex ID
+The OpenAlex ID is the primary key for all entities. It's a URL shaped like this: https://openalex.org/<OpenAlex_key>. Here's a real-world example:
+
+https://openalex.org/W2741809807
+
+The OpenAlex Key
+The OpenAlex ID has two parts. The first part is the Base; it's always https://openalex.org/. The second part is the Key; it's the unique primary key that identifies a given resource in our database.
+
+The key starts with a letter; that letter tells you what kind of entity you've got: W(ork), A(uthor), S(ource), I(nstitution), C(oncept), P(ublisher), or F(under). The IDs are not case-sensitive, so w2741809807 is just as valid as W2741809807. So in the example above, the Key is W2741809807, and the W at the front tells us that this is a Work.
+
+Because OpenAlex was launched as a replacement for Microsoft Academic Graph (MAG), OpenAlex IDs are designed to be backwards-compatible with MAG IDs, where they exist. To find the MAG ID, just take the first letter off the front of the unique part of the ID (so in the example above, the MAG ID is 2741809807). Of course this won't yield anything useful for entities that don't have a MAG ID.
+
+Merged Entity IDs
+At times we need to merge two Entities, effectively deleting one of them. This usually happens when we discover two Entities that represent the same real-world entity - for example, two Authors that are really the same person.
+
+If you request an Entity using its OpenAlex ID, and that Entity has been merged into another Entity, you will be redirected to the Entity it has been merged into. For example, https://openalex.org/A5092938886 has been merged into https://openalex.org/A5006060960, so in the API the former will redirect to the latter:
+
+Copy
+$ curl -i https://api.openalex.org/authors/A5092938886
+HTTP/1.1 301 MOVED PERMANENTLY
+Location: https://api.openalex.org/authors/A5006060960
+Most clients will handle this transparently; you'll get the data for author A5006060960 without knowing the redirect even happened. If you have stored Entity ID lists and do notice the redirect, you might as well replace the merged-away ID to skip the redirect next time.
+
+Supported IDs
+For each entity type, you can retrieve the entity using by any of the external IDs we support--not just the native OpenAlex IDs. So for example:
+
+Get the work with this doi: https://doi.org/10.7717/peerj.4375:
+https://api.openalex.org/works/https://doi.org/10.7717/peerj.4375
+
+This works with DOIs, ISSNs, ORCIDs, and lots of other IDs...in fact, you can use any ID listed in an entity's ids property, as listed below:
+
+Work.ids
+
+Author.ids
+
+Source.ids
+
+Institution.ids
+
+Concept.ids
+
+Publisher.ids
+
+ID formats
+Most of the external IDs OpenAlex supports are canonically expressed as URLs...for example, the canonical form of a DOI always starts with https://doi.org/. You can always use these URL-style IDs in the entity endpoints. Examples:
+
+Get the institution with the ROR https://ror.org/02y3ad647 (University of Florida):
+https://api.openalex.org/institutions/https://ror.org/02y3ad647
+
+Get the author with the ORCID https://orcid.org/0000-0003-1613-5981 (Heather Piwowar):
+https://api.openalex.org/authors/https://orcid.org/0000-0003-1613-5981
+
+For simplicity and clarity, you may also want to express those IDs in a simpler, URN-style format, and that's supported as well; you just write the namespace of the ID, followed by the ID itself. Here are the same examples from above, but in the namespace:id format:
+
+Get the institution with the ROR https://ror.org/02y3ad647 (University of Florida):
+https://api.openalex.org/institutions/ror:02y3ad647
+
+Get the author with the ORCID https://orcid.org/0000-0003-1613-5981 (Heather Piwowar):
+https://api.openalex.org/authors/orcid:0000-0003-1613-5981
+
+Finally, if you're using an OpenAlex ID, you can be even more succinct, and just use the Key part of the ID all by itself, the part that looks like w1234567:
+
+Get the work with OpenAlex ID https://openalex.org/W2741809807:
+https://api.openalex.org/works/W2741809807
+
+Canonical External IDs
+Every entity has an OpenAlex ID. Most entities also have IDs in other systems, too. There are hundreds of different ID systems, but we've selected a single external ID system for each entity to provide the Canonical External ID--this is the ID in the system that's been most fully adopted by the community, and is most frequently used in the wild. We support other external IDs as well, but the canonical ones get a privileged spot in the API and dataset.
+
+These are the Canonical External IDs:
+
+Works: DOI
+
+Authors: ORCID
+
+Sources: ISSN-L
+
+Institutions: ROR ID
+
+Concepts: Wikidata ID
+
+Publishers: Wikidata ID
+
+Dehydrated entity objects
+The full entity objects can get pretty unwieldy, especially when you're embedding a list of them in another object (for instance, a list of Concepts in a Work). For these cases, all the entities except Works have a dehydrated version. This is a stripped-down representation of the entity that carries only its most essential properties. These properties are documented individually on their respective entity pages.
+
+
+
+Random result
+You can get a random result by using the string random where an ID would normally go. OMG that's so random! Each time you call this URL you'll get a different entity. Examples:
+
+Get a random institution:
+https://api.openalex.org/institutions/random
+
+Get a random concept:
+https://api.openalex.org/concepts/random
+
+Select fields
+You can use select to choose top-level fields you want to see in a result.
+
+Display id and display_name for a work
+https://api.openalex.org/works/W2138270253?select=id,display_name
+
+Copy
+{
+  id: "https://openalex.org/W2138270253",
+  display_name: "DNA sequencing with chain-terminating inhibitors"
+}
+Read more about this feature here.
+
+
+Get lists of entities
+It's easy to get a list of entity objects from from the API:/<entity_name>. Here's an example:
+
+Get a list of all the topics in OpenAlex:
+https://api.openalex.org/topics
+
+This query returns a meta object with details about the query, a results list of Topic objects, and an empty group_by list:
+
+Copy
+meta: {
+    count: 4516,
+    db_response_time_ms: 81,
+    page: 1,
+    per_page: 25
+    },
+results: [
+    // long list of Topic entities
+ ],
+group_by: [] // empty
+Listing entities is a lot more useful when you add parameters to page, filter, search, and sort them. Keep reading to learn how to do that.
+
+
+Tutorials
+We're working on making a collection of tutorials to demonstrate how to use OpenAlex to answer all sorts of questions. Check back often for more! Here's what we have currently
+
+Turn the page - Use paging to collect all of the works from an author.
+
+Monitoring Open Access publications for a given institution - Learn how to filter and group with the API.
+
+What are the publication sources located in Japan? - Use the source entity to look at a country's publications over time.
+
+Calculate the h-index for a given author - Use filtering, sorting, and paging to get citation counts and calculate the h-index, an author-level metric.
+
+How are my institution's researchers collaborating with people around the globe? - Learn about institutions in OpenAlex while exploring the international research collaborations made by a university.
+
+Getting started with OpenAlex Premium - Use your Premium API Key to download the latest updates from our API and keep your data in sync with ours.
+
+Introduction to openalexR - In this R notebook, an accompaniment to the webinar on openalexR, you'll learn the basics of using the openalexR library to get data from OpenAlex.
