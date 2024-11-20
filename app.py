@@ -11,6 +11,8 @@ from openai import OpenAI
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import requests
+from causaldag import DAG
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -428,7 +430,140 @@ Prompt: {prompt}"""
         print(f"\nUnexpected error processing GPT response: {str(e)}")
         raise
 
+@app.route('/get_adjustment_set', methods=['POST'])
+def get_adjustment_set():
+    try:
+        data = request.get_json()
+        nodes = data.get('nodes', [])
+        edges = data.get('edges', [])
+        outcome = data.get('outcome')
+        causes = data.get('causes', [])
+        effect_type = data.get('effect_type', 'total')  # Default to total effect
+
+        logging.info(f"Received request - Nodes: {len(nodes)}, Edges: {len(edges)}")
+        logging.info(f"Outcome: {outcome}, Causes: {causes}, Effect Type: {effect_type}")
+
+        # Create a new DAG with nodes
+        node_ids = [str(node['id']) for node in nodes]
+        dag = DAG(nodes=set(node_ids))
+
+        logging.info(f"Added {len(node_ids)} nodes to DAG")
+
+        # Add edges
+        edge_count = 0
+        for edge in edges:
+            source = str(edge['from'])
+            target = str(edge['to'])
+            if source in node_ids and target in node_ids:
+                try:
+                    dag.add_arc(source, target)
+                    edge_count += 1
+                except Exception as e:
+                    logging.warning(f"Warning: Could not add edge {source}->{target}: {str(e)}")
+
+        logging.info(f"Added {edge_count} edges to DAG")
+        logging.info(f"DAG nodes: {dag.nodes}")
+        logging.info(f"DAG arcs: {dag.arcs}")
+
+        # Convert causes to list of strings
+        causes = [str(c) for c in causes]
+        outcome = str(outcome)
+
+        logging.info(f"Calculating {effect_type} effect adjustment set for outcome {outcome} and causes {causes}")
+
+        # Calculate adjustment set
+        adjustment_set = set()
+        
+        for cause in causes:
+            try:
+                # Get all possible nodes that could be in adjustment set
+                # (excluding cause and outcome)
+                possible_nodes = set(node_ids) - {cause, outcome}
+                
+                if effect_type == 'direct':
+                    try:
+                        # For direct effect:
+                        # 1. Get descendants of cause
+                        descendants = set(dag.descendants_of(cause))
+                        logging.info(f"Descendants of {cause}: {descendants}")
+                        
+                        # 2. Get ancestors of outcome or cause (potential confounders)
+                        ancestors = set()
+                        for node in node_ids:
+                            if node != cause and node != outcome:
+                                if dag.is_ancestor_of(node, outcome) or dag.is_ancestor_of(node, cause):
+                                    ancestors.add(node)
+                        logging.info(f"Ancestors of {outcome} or {cause}: {ancestors}")
+                        
+                        # 3. Backdoor adjustment set: ancestors that are not descendants
+                        backdoor_set = ancestors - descendants
+                        logging.info(f"Backdoor nodes for {cause}->{outcome}: {backdoor_set}")
+                        
+                        # 4. Get nodes on indirect paths
+                        # Get ancestors of outcome
+                        outcome_ancestors = set()
+                        for node in node_ids:
+                            if dag.is_ancestor_of(node, outcome):
+                                outcome_ancestors.add(node)
+                        
+                        # Nodes on indirect paths are descendants of cause that are also ancestors of outcome
+                        indirect_nodes = descendants & outcome_ancestors - {cause, outcome}
+                        logging.info(f"Nodes on indirect paths: {indirect_nodes}")
+                        
+                        # Combine both sets
+                        current_set = backdoor_set | indirect_nodes
+                        
+                    except Exception as e:
+                        logging.error(f"Error calculating direct effect adjustment set: {str(e)}")
+                        current_set = set()
+                else:
+                    try:
+                        # For total effect:
+                        # 1. Get descendants of cause
+                        descendants = set(dag.descendants_of(cause))
+                        logging.info(f"Descendants of {cause}: {descendants}")
+                        
+                        # 2. Get ancestors of outcome or cause (potential confounders)
+                        ancestors = set()
+                        for node in node_ids:
+                            if node != cause and node != outcome:
+                                if dag.is_ancestor_of(node, outcome) or dag.is_ancestor_of(node, cause):
+                                    ancestors.add(node)
+                        logging.info(f"Ancestors of {outcome} or {cause}: {ancestors}")
+                        
+                        # 3. Adjustment set: ancestors that are not descendants
+                        current_set = ancestors - descendants
+                        logging.info(f"Adjustment set for {cause}->{outcome}: {current_set}")
+                        
+                    except Exception as e:
+                        logging.error(f"Error calculating total effect adjustment set: {str(e)}")
+                        current_set = set()
+
+                adjustment_set.update(current_set)
+                logging.info(f"Current adjustment set for cause {cause}: {current_set}")
+
+            except Exception as e:
+                logging.warning(f"Warning: Error calculating adjustment set for cause {cause}: {str(e)}")
+                logging.info(f"DAG nodes: {dag.nodes}")
+                logging.info(f"DAG arcs: {dag.arcs}")
+
+        logging.info(f"Final adjustment set: {adjustment_set}")
+        
+        return jsonify({
+            'success': True,
+            'adjustment_sets': [list(adjustment_set)] if adjustment_set else []
+        })
+
+    except Exception as e:
+        logging.error(f"Error in get_adjustment_set: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'adjustment_sets': []
+        })
+
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     with app.app_context():
         db.create_all()
     app.run(host='0.0.0.0', port=5000)
