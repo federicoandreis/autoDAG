@@ -36,9 +36,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         },
+        nodes: {
+            color: {
+                background: '#D2E5FF',
+                border: '#2B7CE9',
+                highlight: {
+                    background: '#D2E5FF',
+                    border: '#2B7CE9'
+                }
+            }
+        },
         edges: {
             arrows: {
                 to: { enabled: true, scaleFactor: 1, type: 'arrow' }
+            },
+            smooth: {
+                type: 'continuous'
+            }
+        },
+        physics: {
+            enabled: true,
+            barnesHut: {
+                gravitationalConstant: -2000,
+                centralGravity: 0.3,
+                springLength: 95,
+                springConstant: 0.04,
+                damping: 0.09
             }
         }
     });
@@ -236,6 +259,184 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(error => console.error('Error:', error));
     }
 
+    // Function to update node colors based on current selection and adjustment set
+    function updateNodeColors(adjustmentSet = []) {
+        console.log('Updating colors with adjustment set:', adjustmentSet);
+        
+        const outcomeNode = document.getElementById('outcome-select').value;
+        const causeNodes = Array.from(document.getElementById('causes-select').selectedOptions).map(option => option.value);
+        
+        console.log('Outcome:', outcomeNode);
+        console.log('Causes:', causeNodes);
+        
+        // Get all nodes
+        const allNodes = nodes.get();
+        const updates = [];
+        
+        // First set all nodes to default color
+        allNodes.forEach(node => {
+            updates.push({
+                id: node.id,
+                color: {
+                    background: '#D2E5FF',
+                    border: '#2B7CE9'
+                }
+            });
+        });
+        
+        // Then color adjustment set nodes red
+        if (adjustmentSet && adjustmentSet.length > 0) {
+            adjustmentSet.forEach(nodeId => {
+                if (!causeNodes.includes(nodeId) && nodeId !== outcomeNode) {
+                    updates.push({
+                        id: nodeId,
+                        color: {
+                            background: '#FFCDD2',
+                            border: '#F44336'
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Then color cause nodes green
+        causeNodes.forEach(nodeId => {
+            updates.push({
+                id: nodeId,
+                color: {
+                    background: '#A5D6A7',
+                    border: '#4CAF50'
+                }
+            });
+        });
+        
+        // Finally color outcome node blue (unless it's also a cause)
+        if (outcomeNode && !causeNodes.includes(outcomeNode)) {
+            updates.push({
+                id: outcomeNode,
+                color: {
+                    background: '#97C2FC',
+                    border: '#2B7CE9'
+                }
+            });
+        }
+        
+        // Apply all updates at once
+        if (updates.length > 0) {
+            console.log('Applying color updates:', updates);
+            nodes.update(updates);
+        }
+    }
+
+    // Add event listener for adjustment set calculation
+    document.getElementById('get-adjustment-set').addEventListener('click', () => {
+        console.log('Get adjustment set clicked');
+        const outcomeSelect = document.getElementById('outcome-select');
+        const causesSelect = document.getElementById('causes-select');
+        const effectTypeSelect = document.getElementById('effect-type');
+        const adjustmentSetDisplay = document.getElementById('adjustment-set-display');
+
+        const outcome = outcomeSelect.value;
+        const causes = Array.from(causesSelect.selectedOptions).map(option => option.value);
+        const effectType = effectTypeSelect.value;
+
+        if (!outcome || causes.length === 0) {
+            alert('Please select both outcome and at least one cause');
+            return;
+        }
+
+        // Reset display
+        adjustmentSetDisplay.textContent = 'Calculating...';
+
+        fetch('/get_adjustment_set', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                nodes: nodes.get(),
+                edges: edges.get(),
+                outcome: outcome,
+                causes: causes,
+                effect_type: effectType
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const adjustmentSets = data.adjustment_sets;
+                console.log('Received adjustment sets:', adjustmentSets);
+                
+                if (adjustmentSets.length > 0) {
+                    // Get node labels for display
+                    const nodeLabels = adjustmentSets[0].map(nodeId => {
+                        const node = nodes.get(nodeId);
+                        return node ? (node.label || nodeId) : nodeId;
+                    });
+                    
+                    adjustmentSetDisplay.textContent = `Adjustment Set: {${nodeLabels.join(', ')}}`;
+                    
+                    // Update colors with the adjustment set
+                    updateNodeColors(adjustmentSets[0]);
+                } else {
+                    adjustmentSetDisplay.textContent = 'No adjustment set needed';
+                    updateNodeColors([]);
+                }
+            } else {
+                console.error('Error:', data.error);
+                adjustmentSetDisplay.textContent = 'Error: ' + data.error;
+                updateNodeColors([]);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            adjustmentSetDisplay.textContent = 'Error calculating adjustment set';
+            updateNodeColors([]);
+        });
+    });
+
+    // Remove the automatic color updates on selection changes
+    document.getElementById('outcome-select').removeEventListener('change', updateNodeColors);
+    document.getElementById('causes-select').removeEventListener('change', updateNodeColors);
+    document.getElementById('effect-type').removeEventListener('change', updateNodeColors);
+
+    // Update selectors when nodes change
+    nodes.on('*', () => {
+        updateNodeSelectors();
+    });
+
+    function updateNodeSelectors() {
+        const outcomeSelect = document.getElementById('outcome-select');
+        const causesSelect = document.getElementById('causes-select');
+        
+        // Store current selections
+        const currentOutcome = outcomeSelect.value;
+        const currentCauses = Array.from(causesSelect.selectedOptions).map(opt => opt.value);
+        
+        // Clear and repopulate options
+        outcomeSelect.innerHTML = '<option value="">Select Outcome</option>';
+        causesSelect.innerHTML = '';
+        
+        nodes.get().forEach(node => {
+            const outcomeOpt = document.createElement('option');
+            outcomeOpt.value = node.id;
+            outcomeOpt.text = node.label || node.id;
+            outcomeSelect.appendChild(outcomeOpt.cloneNode(true));
+            causesSelect.appendChild(outcomeOpt);
+        });
+        
+        // Restore selections if nodes still exist
+        if (currentOutcome && nodes.get(currentOutcome)) {
+            outcomeSelect.value = currentOutcome;
+        }
+        currentCauses.forEach(value => {
+            if (nodes.get(value)) {
+                const option = causesSelect.querySelector(`option[value="${value}"]`);
+                if (option) option.selected = true;
+            }
+        });
+    }
+
     saveProjectBtn.addEventListener('click', saveProject);
 
     addNodeBtn.addEventListener('click', () => {
@@ -296,7 +497,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
 
     // Admin generate graph functionality
     if (submitPromptBtn) {

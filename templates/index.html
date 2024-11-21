@@ -39,6 +39,36 @@
             <div id="related-papers" class="scrollable-panel">
                 <!-- Papers will be dynamically added here -->
             </div>
+            
+            <div class="panel-section">
+                <h3>Graph Generation</h3>
+                <textarea id="graph-prompt" placeholder="Describe the DAG you want to create..."></textarea>
+                <button id="generate-graph">Generate Graph</button>
+            </div>
+
+            <div class="panel-section">
+                <h3>Adjustment Set</h3>
+                <div class="control-group">
+                    <label for="outcome-select">Outcome:</label>
+                    <select id="outcome-select">
+                        <option value="">Select Outcome</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="causes-select">Causes (multiple):</label>
+                    <select id="causes-select" multiple>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="effect-type">Effect Type:</label>
+                    <select id="effect-type">
+                        <option value="total">Total Effect</option>
+                        <option value="direct">Direct Effect</option>
+                    </select>
+                </div>
+                <button id="get-adjustment-set">Get Adjustment Set</button>
+                <div id="adjustment-set-display" class="adjustment-set-result"></div>
+            </div>
         </div>
     </div>
     
