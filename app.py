@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import requests
 from causaldag import DAG
 import logging
+from itertools import chain, combinations
 
 # Load environment variables from .env file
 load_dotenv()
@@ -471,8 +472,8 @@ def get_adjustment_set():
 
         logging.info(f"Calculating {effect_type} effect adjustment set for outcome {outcome} and causes {causes}")
 
-        # Calculate adjustment set
-        adjustment_set = set()
+        # Calculate adjustment sets
+        all_adjustment_sets = []
         
         for cause in causes:
             try:
@@ -510,12 +511,15 @@ def get_adjustment_set():
                         indirect_nodes = descendants & outcome_ancestors - {cause, outcome}
                         logging.info(f"Nodes on indirect paths: {indirect_nodes}")
                         
-                        # Combine both sets
-                        current_set = backdoor_set | indirect_nodes
+                        # For direct effect, we need both backdoor_set and indirect_nodes
+                        required_nodes = backdoor_set | indirect_nodes
+                        
+                        # Find all minimal sets that include the required nodes
+                        current_sets = find_minimal_adjustment_sets(dag, cause, outcome, required_nodes, possible_nodes)
                         
                     except Exception as e:
                         logging.error(f"Error calculating direct effect adjustment set: {str(e)}")
-                        current_set = set()
+                        current_sets = []
                 else:
                     try:
                         # For total effect:
@@ -531,27 +535,32 @@ def get_adjustment_set():
                                     ancestors.add(node)
                         logging.info(f"Ancestors of {outcome} or {cause}: {ancestors}")
                         
-                        # 3. Adjustment set: ancestors that are not descendants
-                        current_set = ancestors - descendants
-                        logging.info(f"Adjustment set for {cause}->{outcome}: {current_set}")
+                        # 3. Base adjustment set: ancestors that are not descendants
+                        base_set = ancestors - descendants
+                        
+                        # Find all minimal sets
+                        current_sets = find_minimal_adjustment_sets(dag, cause, outcome, set(), base_set)
                         
                     except Exception as e:
                         logging.error(f"Error calculating total effect adjustment set: {str(e)}")
-                        current_set = set()
+                        current_sets = []
 
-                adjustment_set.update(current_set)
-                logging.info(f"Current adjustment set for cause {cause}: {current_set}")
+                # Add the current sets to all_adjustment_sets if they're valid
+                for s in current_sets:
+                    if s not in all_adjustment_sets:
+                        all_adjustment_sets.append(list(s))
+                logging.info(f"Current adjustment sets for cause {cause}: {current_sets}")
 
             except Exception as e:
                 logging.warning(f"Warning: Error calculating adjustment set for cause {cause}: {str(e)}")
                 logging.info(f"DAG nodes: {dag.nodes}")
                 logging.info(f"DAG arcs: {dag.arcs}")
 
-        logging.info(f"Final adjustment set: {adjustment_set}")
+        logging.info(f"Final adjustment sets: {all_adjustment_sets}")
         
         return jsonify({
             'success': True,
-            'adjustment_sets': [list(adjustment_set)] if adjustment_set else []
+            'adjustment_sets': all_adjustment_sets
         })
 
     except Exception as e:
@@ -561,6 +570,185 @@ def get_adjustment_set():
             'error': str(e),
             'adjustment_sets': []
         })
+
+def find_minimal_adjustment_sets(dag, cause, outcome, required_nodes, possible_nodes):
+    """Find all minimal adjustment sets that contain the required nodes.
+    
+    Args:
+        dag: The DAG object
+        cause: The cause node
+        outcome: The outcome node
+        required_nodes: Set of nodes that must be in every adjustment set
+        possible_nodes: Set of nodes that could be in the adjustment set
+    """
+    # First check if adjustment is possible/needed
+    if cause == outcome:
+        logging.info("Cause and outcome are the same node - no adjustment needed")
+        return []
+        
+    # Check if there is any causal path
+    causal_paths = find_causal_paths(dag, cause, outcome)
+    if not causal_paths:
+        logging.info("No causal path exists between cause and outcome")
+        return []
+    
+    # Find all non-causal paths that need to be blocked
+    noncausal_paths = find_noncausal_paths(dag, cause, outcome)
+    logging.info(f"Non-causal paths that need to be blocked: {noncausal_paths}")
+    
+    if not noncausal_paths:
+        logging.info("No non-causal paths need to be blocked")
+        return [required_nodes] if required_nodes else []
+    
+    # For each path, identify minimal sets of nodes that could block it
+    path_blocking_options = {}
+    for path_idx, path in enumerate(noncausal_paths):
+        path_blocking_options[path_idx] = find_minimal_blocking_sets(dag, path, cause, outcome)
+    logging.info(f"Minimal blocking options for each path: {path_blocking_options}")
+    
+    # Generate all possible combinations of blocking nodes
+    adjustment_sets = []
+    
+    # Start with required nodes
+    base_set = required_nodes.copy()
+    
+    # For each path, we need to pick at least one blocking option
+    path_options = []
+    for path_idx in path_blocking_options:
+        valid_options = []
+        for option in path_blocking_options[path_idx]:
+            # Only include blocking sets that don't create new problems
+            if not creates_new_paths(dag, cause, outcome, option):
+                valid_options.append(option)
+        if valid_options:
+            path_options.append(valid_options)
+        else:
+            # If we can't block some path, no valid adjustment set exists
+            return []
+    
+    # Generate all possible combinations of blocking options
+    from itertools import product
+    for combination in product(*path_options):
+        # Union all the blocking sets in this combination
+        current_set = base_set.copy()
+        for blocking_set in combination:
+            current_set.update(blocking_set)
+            
+        # Check if this set is minimal
+        if is_minimal_adjustment_set(current_set, noncausal_paths, dag, cause, outcome, base_set):
+            adjustment_sets.append(current_set)
+    
+    return adjustment_sets
+
+def find_causal_paths(dag, cause, outcome):
+    """Find all directed paths from cause to outcome."""
+    paths = []
+    
+    def find_paths_recursive(current_node, current_path, visited):
+        if current_node == outcome:
+            paths.append(current_path[:])
+            return
+            
+        for next_node in dag.nodes:
+            if (dag.has_arc(current_node, next_node) and 
+                next_node not in visited and 
+                not dag.has_arc(next_node, current_node)):  # Ensure directed path
+                find_paths_recursive(next_node, current_path + [next_node], visited | {next_node})
+    
+    find_paths_recursive(cause, [cause], {cause})
+    return paths
+
+def find_noncausal_paths(dag, cause, outcome):
+    """Find all non-causal paths between cause and outcome that need to be blocked."""
+    paths = []
+    
+    def find_paths_recursive(current_node, current_path, visited, has_collider):
+        if current_node == outcome:
+            # Only add path if it's not causal and not already blocked by a collider
+            if not is_causal_path(current_path, dag) and not has_collider:
+                paths.append(current_path[:])
+            return
+            
+        for next_node in dag.nodes:
+            if next_node not in visited:
+                # Check if this creates a collider
+                is_collider = (len(current_path) >= 2 and
+                             dag.has_arc(current_path[-2], current_node) and
+                             dag.has_arc(next_node, current_node))
+                
+                if dag.has_arc(current_node, next_node) or dag.has_arc(next_node, current_node):
+                    find_paths_recursive(next_node, current_path + [next_node],
+                                      visited | {next_node}, has_collider or is_collider)
+    
+    # Start from cause
+    find_paths_recursive(cause, [cause], {cause}, False)
+    return paths
+
+def find_minimal_blocking_sets(dag, path, cause, outcome):
+    """Find all minimal sets of nodes that could block a specific path."""
+    blocking_sets = []
+    
+    # Any node on the path except cause, outcome can potentially block it
+    potential_blockers = set()
+    for i, node in enumerate(path[1:-1], 1):  # Skip cause and outcome
+        # Check if node is a collider
+        is_collider = False
+        if i > 0 and i < len(path)-1:
+            prev_to_node = dag.has_arc(path[i-1], node)
+            next_to_node = dag.has_arc(path[i+1], node)
+            node_to_prev = dag.has_arc(node, path[i-1])
+            node_to_next = dag.has_arc(node, path[i+1])
+            is_collider = (prev_to_node and next_to_node) or (node_to_prev and node_to_next)
+        
+        if not is_collider:
+            potential_blockers.add(node)
+    
+    # Generate all possible combinations of blocking nodes
+    # Start with single nodes, then pairs, etc.
+    from itertools import combinations
+    for r in range(1, len(potential_blockers) + 1):
+        for combo in combinations(potential_blockers, r):
+            blocking_set = set(combo)
+            # Check if this is a minimal blocking set
+            is_minimal = True
+            for subset in powerset(blocking_set):
+                subset = set(subset)
+                if subset != blocking_set and subset and blocks_path(subset, path, dag):
+                    is_minimal = False
+                    break
+            if is_minimal and blocks_path(blocking_set, path, dag):
+                blocking_sets.append(blocking_set)
+    
+    return blocking_sets
+
+def blocks_path(node_set, path, dag):
+    """Check if a set of nodes blocks a specific path."""
+    # A node blocks a path if it's on the path and not a collider
+    for i, node in enumerate(path[1:-1], 1):  # Skip cause and outcome
+        if node in node_set:
+            # Check if node is a collider
+            is_collider = False
+            if i > 0 and i < len(path)-1:
+                prev_to_node = dag.has_arc(path[i-1], node)
+                next_to_node = dag.has_arc(path[i+1], node)
+                node_to_prev = dag.has_arc(node, path[i-1])
+                node_to_next = dag.has_arc(node, path[i+1])
+                is_collider = (prev_to_node and next_to_node) or (node_to_prev and node_to_next)
+            
+            if not is_collider:
+                return True
+    return False
+
+def is_causal_path(path, dag):
+    """Check if a path is causal (all edges point forward)."""
+    for i in range(len(path)-1):
+        if not dag.has_arc(path[i], path[i+1]) or dag.has_arc(path[i+1], path[i]):
+            return False
+    return True
+
+def powerset(s):
+    """Return all subsets of a set."""
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
