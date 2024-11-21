@@ -329,3 +329,136 @@ nav ul li a {
 nav ul li a:hover {
     background: rgba(255,255,255,0.1);
 }
+
+/* Admin Dashboard and Auth Pages */
+.auth-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.auth-container h1 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+.auth-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.auth-container form div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.auth-container label {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.auth-container input {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.auth-container button {
+    margin-top: 1rem;
+}
+
+/* Admin Dashboard */
+.admin-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.admin-container h1 {
+    color: #2c3e50;
+    margin-bottom: 2rem;
+}
+
+.admin-container h2 {
+    color: #2c3e50;
+    margin: 2rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #eee;
+}
+
+.admin-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 2rem;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+.admin-container th {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #2c3e50;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.admin-container td {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.admin-container tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-container td form {
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.admin-container td button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+.admin-container td button[type="submit"] {
+    background: #dc3545;
+}
+
+.admin-container td button[type="submit"]:hover {
+    background: #c82333;
+}
+
+.admin-container .button {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.admin-container input[type="file"] {
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.admin-container p {
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 0.5rem;
+}
+
+/* Make sure content is below the nav bar */
+.auth-container,
+.admin-container {
+    margin-top: 80px;
+}
