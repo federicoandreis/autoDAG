@@ -401,8 +401,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('effect-type').removeEventListener('change', updateNodeColors);
 
     // Update selectors when nodes change
-    nodes.on('*', () => {
+    const nodesChangeHandler = () => {
         updateNodeSelectors();
+    };
+    nodes.on('*', nodesChangeHandler);
+
+    // Cleanup function to remove event listeners
+    window.addEventListener('beforeunload', () => {
+        nodes.off('*', nodesChangeHandler);
     });
 
     function updateNodeSelectors() {
